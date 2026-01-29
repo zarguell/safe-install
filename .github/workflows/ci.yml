@@ -132,7 +132,7 @@ jobs:
           echo "=== Creating virtual environment ==="
           python3 -m venv test-venv
 
-      - name: Test pip without venv (should succeed with require_venv: false)
+      - name: Test pip without venv - should succeed with require_venv = false
         run: |
           echo "=== Testing pip without venv (require_venv: false, should succeed) ==="
           if ./safe-install pip list 2>&1 | grep -q "Package"; then
