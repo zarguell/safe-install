@@ -6,6 +6,7 @@ safe-install-*
 # Coverage reports
 coverage.out
 *.coverprofile
+coverage.*
 
 # Test files
 *.test
