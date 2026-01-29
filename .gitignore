@@ -1,0 +1,19 @@
+# Binaries
+safe-install
+safe-install-*
+*.exe
+
+# Coverage reports
+coverage.out
+*.coverprofile
+
+# Test files
+*.test
+
+# Go workspace
+go.work
+go.work.sum
+
+# OS specific
+.DS_Store
+Thumbs.db
