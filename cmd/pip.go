@@ -15,6 +15,7 @@ var pipCmd = &cobra.Command{
 	Short: "Wraps Python pip with security policies",
 	Long: `Wraps Python pip with security policies, enforcing virtual environment 
 requirements, registry URLs, and blocking interactive prompts.`,
+	DisableFlagParsing: true,
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil {

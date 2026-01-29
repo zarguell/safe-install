@@ -66,18 +66,8 @@ jobs:
           fi
 
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: test
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            binary_name: safe-install-linux
-          - os: macos-latest
-            binary_name: safe-install-darwin
-          - os: windows-latest
-            binary_name: safe-install.exe
 
     steps:
       - name: Checkout code
@@ -89,23 +79,132 @@ jobs:
           go-version: '1.22'
 
       - name: Build
-        env:
-          GOOS: ${{ matrix.os == 'windows-latest' && 'windows' || matrix.os == 'macos-latest' && 'darwin' || 'linux' }}
-          GOARCH: amd64
-          CGO_ENABLED: 0
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            go build -ldflags="-s -w" -o ${{ matrix.binary_name }}
-          else
-            go build -ldflags="-s -w" -o ${{ matrix.binary_name }}
-          fi
-        shell: bash
+          go build -ldflags="-s -w" -o safe-install
 
-      - name: Verify binary
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: safe-install-linux
+          path: safe-install
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Download binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: safe-install-linux
+          path: .
+
+      - name: Make binary executable
+        run: chmod +x safe-install
+
+      - name: Install config example
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            ./${{ matrix.binary_name }} --help
+          sudo mkdir -p /etc/safe-install
+          sudo cp config.example.json /etc/safe-install/config.json
+          sudo cat /etc/safe-install/config.json
+
+      - name: Test help command
+        run: |
+          echo "=== Testing help command ==="
+          ./safe-install --help
+          ./safe-install pip --help
+
+      - name: Test venv blocking (should fail)
+        run: |
+          echo "=== Testing venv blocking (should fail) ==="
+          if ./safe-install pip list; then
+            echo "ERROR: Should have failed without venv"
+            exit 1
           else
-            ./${{ matrix.binary_name }} --help
+            echo "SUCCESS: Correctly blocked without venv"
           fi
-        shell: bash
+
+      - name: Create virtual environment
+        run: |
+          echo "=== Creating virtual environment ==="
+          python3 -m venv test-venv
+
+      - name: Test list command
+        run: |
+          echo "=== Testing list command ==="
+          source test-venv/bin/activate
+          ./safe-install pip list
+          deactivate
+
+      - name: Test show command
+        run: |
+          echo "=== Testing show command ==="
+          source test-venv/bin/activate
+          ./safe-install pip show requests || echo "Package not installed, show failed as expected"
+          deactivate
+
+      - name: Test install with help
+        run: |
+          echo "=== Testing install with help to verify args ==="
+          source test-venv/bin/activate
+          ./safe-install pip install --help 2>&1 | grep -q "Install Options" || exit 1
+          deactivate
+
+      - name: Test blocked index-url flag
+        run: |
+          echo "=== Testing blocked index-url flag ==="
+          source test-venv/bin/activate
+          if ./safe-install pip install --index-url http://bad.com requests; then
+            echo "ERROR: Should have blocked --index-url flag"
+            exit 1
+          else
+            echo "SUCCESS: Correctly blocked --index-url flag"
+          fi
+          deactivate
+
+      - name: Test blocked extra-index-url flag
+        run: |
+          echo "=== Testing blocked extra-index-url flag ==="
+          source test-venv/bin/activate
+          if ./safe-install pip install --extra-index-url http://bad.com requests; then
+            echo "ERROR: Should have blocked --extra-index-url flag"
+            exit 1
+          else
+            echo "SUCCESS: Correctly blocked --extra-index-url flag"
+          fi
+          deactivate
+
+      - name: Test actual install
+        run: |
+          echo "=== Testing actual install ==="
+          source test-venv/bin/activate
+          ./safe-install pip install requests
+          deactivate
+
+      - name: Verify package was installed
+        run: |
+          echo "=== Verifying installation ==="
+          source test-venv/bin/activate
+          if ./safe-install pip show requests > /dev/null; then
+            echo "SUCCESS: requests package installed correctly"
+            ./safe-install pip list | grep requests
+          else
+            echo "ERROR: requests package not found"
+            exit 1
+          fi
+          deactivate
+
+      - name: Test uninstall
+        run: |
+          echo "=== Testing uninstall ==="
+          source test-venv/bin/activate
+          ./safe-install pip uninstall -y requests
+          deactivate

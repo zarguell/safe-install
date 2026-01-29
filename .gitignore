@@ -2,6 +2,7 @@
 safe-install
 safe-install-*
 *.exe
+test-venv/
 
 # Coverage reports
 coverage.out
