@@ -18,10 +18,8 @@ func ValidatePipEnv(cfg *config.Config) error {
 }
 
 func BuildPipArgs(cfg *config.Config, userArgs []string) ([]string, error) {
-	var args []string
-
-	if cfg.Common.BlockInteractive {
-		args = append(args, "--no-input")
+	if len(userArgs) == 0 {
+		return nil, fmt.Errorf("no pip subcommand provided")
 	}
 
 	for _, arg := range userArgs {
@@ -30,11 +28,21 @@ func BuildPipArgs(cfg *config.Config, userArgs []string) ([]string, error) {
 		}
 	}
 
-	args = append(args, userArgs...)
+	subcommand := userArgs[0]
+	packageArgs := userArgs[1:]
 
-	if cfg.Managers.Pip.RegistryURL != "" {
-		args = append([]string{"--index-url", cfg.Managers.Pip.RegistryURL, "--no-index"}, args...)
+	var args []string
+	args = append(args, subcommand)
+
+	if cfg.Common.BlockInteractive && subcommand == "install" {
+		args = append(args, "--no-input")
 	}
+
+	if cfg.Managers.Pip.RegistryURL != "" && subcommand == "install" {
+		args = append(args, "--index-url", cfg.Managers.Pip.RegistryURL, "--no-index")
+	}
+
+	args = append(args, packageArgs...)
 
 	return args, nil
 }

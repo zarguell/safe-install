@@ -111,6 +111,19 @@ func TestBuildPipArgs(t *testing.T) {
 		wantArgsContain []string
 	}{
 		{
+			name: "errors on empty arguments",
+			cfg: &config.Config{
+				Managers: config.ManagersConfig{
+					Pip: config.PipConfig{
+						RegistryURL: "",
+					},
+				},
+			},
+			userArgs:     []string{},
+			wantErr:      true,
+			errorMessage: "no pip subcommand provided",
+		},
+		{
 			name: "blocks --index-url argument",
 			cfg: &config.Config{
 				Managers: config.ManagersConfig{
@@ -166,7 +179,7 @@ func TestBuildPipArgs(t *testing.T) {
 			wantArgsContain: []string{"install", "requests"},
 		},
 		{
-			name: "injects --no-input when block_interactive is true",
+			name: "injects --no-input when block_interactive is true for install",
 			cfg: &config.Config{
 				Common: config.CommonConfig{
 					BlockInteractive: true,
@@ -179,10 +192,26 @@ func TestBuildPipArgs(t *testing.T) {
 			},
 			userArgs:        []string{"install", "requests"},
 			wantErr:         false,
-			wantArgsContain: []string{"--no-input", "install", "requests"},
+			wantArgsContain: []string{"install", "--no-input", "requests"},
 		},
 		{
-			name: "injects registry url when configured",
+			name: "does not inject --no-input for list subcommand",
+			cfg: &config.Config{
+				Common: config.CommonConfig{
+					BlockInteractive: true,
+				},
+				Managers: config.ManagersConfig{
+					Pip: config.PipConfig{
+						RegistryURL: "",
+					},
+				},
+			},
+			userArgs:        []string{"list"},
+			wantErr:         false,
+			wantArgsContain: []string{"list"},
+		},
+		{
+			name: "injects registry url when configured for install",
 			cfg: &config.Config{
 				Common: config.CommonConfig{
 					BlockInteractive: false,
@@ -195,10 +224,26 @@ func TestBuildPipArgs(t *testing.T) {
 			},
 			userArgs:        []string{"install", "requests"},
 			wantErr:         false,
-			wantArgsContain: []string{"--index-url", "https://artifactory.local/api/pypi/simple", "--no-index", "install", "requests"},
+			wantArgsContain: []string{"install", "--index-url", "https://artifactory.local/api/pypi/simple", "--no-index", "requests"},
 		},
 		{
-			name: "injects both --no-input and registry url",
+			name: "does not inject registry url for list subcommand",
+			cfg: &config.Config{
+				Common: config.CommonConfig{
+					BlockInteractive: false,
+				},
+				Managers: config.ManagersConfig{
+					Pip: config.PipConfig{
+						RegistryURL: "https://artifactory.local/api/pypi/simple",
+					},
+				},
+			},
+			userArgs:        []string{"list"},
+			wantErr:         false,
+			wantArgsContain: []string{"list"},
+		},
+		{
+			name: "injects both --no-input and registry url for install",
 			cfg: &config.Config{
 				Common: config.CommonConfig{
 					BlockInteractive: true,
@@ -211,23 +256,7 @@ func TestBuildPipArgs(t *testing.T) {
 			},
 			userArgs:        []string{"install", "requests"},
 			wantErr:         false,
-			wantArgsContain: []string{"--index-url", "https://artifactory.local/api/pypi/simple", "--no-index", "--no-input", "install", "requests"},
-		},
-		{
-			name: "handles empty user arguments",
-			cfg: &config.Config{
-				Common: config.CommonConfig{
-					BlockInteractive: true,
-				},
-				Managers: config.ManagersConfig{
-					Pip: config.PipConfig{
-						RegistryURL: "https://artifactory.local/api/pypi/simple",
-					},
-				},
-			},
-			userArgs:        []string{},
-			wantErr:         false,
-			wantArgsContain: []string{"--index-url", "https://artifactory.local/api/pypi/simple", "--no-index", "--no-input"},
+			wantArgsContain: []string{"install", "--no-input", "--index-url", "https://artifactory.local/api/pypi/simple", "--no-index", "requests"},
 		},
 		{
 			name: "preserves multiple user arguments",
