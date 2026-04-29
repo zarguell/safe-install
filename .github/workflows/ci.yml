@@ -87,7 +87,7 @@ jobs:
           go build -ldflags="-s -w" -o safe-install
 
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: safe-install-linux
           path: safe-install
@@ -107,7 +107,7 @@ jobs:
           python-version: '3.x'
 
       - name: Download binary artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: safe-install-linux
           path: .
